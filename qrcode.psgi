@@ -6,7 +6,7 @@ use Imager::QRCode;
 use Plack::Request;
 use Text::Xslate;
 use Data::Section::Simple qw/get_data_section/;
-use HTML::FillInForm;
+use HTML::FillInForm::Lite;
 use URI::Escape qw/uri_escape/;
 
 my $xslate = Text::Xslate->new(syntax => 'TTerse', function => {uri_escape => \&uri_escape});
@@ -38,7 +38,7 @@ my $app = sub {
             my $tmpl = get_data_section('index.tx');
             my $html = $xslate->render_string( $tmpl,
                 { q => $q, s => $size, version => $VERSION } );
-            $html = HTML::FillInForm->fill( \$html,  $req );
+            $html = HTML::FillInForm::Lite->fill( \$html,  $req );
             return [200, ['Content-Type' => 'text/html; charset=utf-8', 'Content-Length' => length($html)], [$html]];
         }
         when ('/img') {
