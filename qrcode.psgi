@@ -9,8 +9,12 @@ use Data::Section::Simple qw/get_data_section/;
 use HTML::FillInForm::Lite;
 use Router::Simple::Sinatraish;
 use Plack::Response;
+use Encode qw/encode_utf8/;
 
-my $xslate = Text::Xslate->new(syntax => 'TTerse');
+my $xslate = Text::Xslate->new(
+    syntax => 'TTerse',
+    path   => [ get_data_section() ]
+);
 
 our $VERSION = 0.01;
 
@@ -34,10 +38,15 @@ any '/' => sub {
     my $req = shift;
     my $size = $req->param("s") || 7;
     my $q = $req->param('q');
-    my $tmpl = get_data_section('index.tx');
-    my $html = $xslate->render_string( $tmpl,
-        { q => $q, s => $size, version => $VERSION } );
+    my $html = $xslate->render(
+        'index.tx' => {
+            q       => $q,
+            s       => $size,
+            version => $VERSION,
+        }
+    );
     $html = HTML::FillInForm::Lite->fill( \$html,  $req );
+    $html = encode_utf8($html);
     return Plack::Response->new(
         200,
         [
