@@ -8,6 +8,8 @@ use Text::Xslate;
 use Data::Section::Simple qw/get_data_section/;
 use HTML::FillInForm::Lite;
 use URI::Escape qw/uri_escape/;
+use Router::Simple::Sinatraish;
+use Plack::Response;
 
 my $xslate = Text::Xslate->new(syntax => 'TTerse', function => {uri_escape => \&uri_escape});
 
@@ -29,29 +31,46 @@ sub render_qr {
     $data;
 }
 
+any '/' => sub {
+    my $req = shift;
+    my $size = $req->param("s") || 7;
+    my $q = $req->param('q');
+    my $tmpl = get_data_section('index.tx');
+    my $html = $xslate->render_string( $tmpl,
+        { q => $q, s => $size, version => $VERSION } );
+    $html = HTML::FillInForm::Lite->fill( \$html,  $req );
+    return Plack::Response->new(
+        200,
+        [
+            'Content-Type'   => 'text/html; charset=utf-8',
+            'Content-Length' => length($html)
+        ],
+        [$html]
+    );
+};
+any '/img' => sub {
+    my $req = shift;
+    my $size = $req->param("s") || 7;
+    my $text = $req->param('q') // die "missing q";
+    my $png = render_qr($text, $size);
+
+    return Plack::Response->new( 200,
+        [ 'Content-Type' => 'image/png', 'Content-Length' => length($png) ],
+        [$png] );
+};
+
 my $app = sub {
-    my $req = Plack::Request->new($_[0]);
-    given ($req->env->{PATH_INFO}) {
-        when ('/') {
-            my $size = $req->param("s") || 7;
-            my $q = $req->param('q');
-            my $tmpl = get_data_section('index.tx');
-            my $html = $xslate->render_string( $tmpl,
-                { q => $q, s => $size, version => $VERSION } );
-            $html = HTML::FillInForm::Lite->fill( \$html,  $req );
-            return [200, ['Content-Type' => 'text/html; charset=utf-8', 'Content-Length' => length($html)], [$html]];
-        }
-        when ('/img') {
-            my $size = $req->param("s") || 7;
-            my $text = $req->param('q') // die "missing q";
-            my $png = render_qr($text, $size);
-            return [200, ['Content-Type' => 'image/png', 'Content-Length' => length($png)], [$png]];
-        }
-        default {
-            my $content = 'not found';
-            return [404, ['Content-Length' => length($content)], [$content]];
-        }
-    };
+    my $env = shift;
+
+    if ( my $route = __PACKAGE__->router->match($env) ) {
+        my $req = Plack::Request->new($env);
+        my $res = $route->{code}->($req);
+        return $res->finalize();
+    }
+    else {
+        my $content = 'not found';
+        return [404, ['Content-Length' => length($content)], [$content]];
+    }
 };
 
 __DATA__
