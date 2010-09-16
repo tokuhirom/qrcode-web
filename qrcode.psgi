@@ -7,11 +7,10 @@ use Plack::Request;
 use Text::Xslate;
 use Data::Section::Simple qw/get_data_section/;
 use HTML::FillInForm::Lite;
-use URI::Escape qw/uri_escape/;
 use Router::Simple::Sinatraish;
 use Plack::Response;
 
-my $xslate = Text::Xslate->new(syntax => 'TTerse', function => {uri_escape => \&uri_escape});
+my $xslate = Text::Xslate->new(syntax => 'TTerse');
 
 our $VERSION = 0.01;
 
@@ -121,7 +120,7 @@ __DATA__
             <a href="javascript:location.href=location.href+'?q='+encodeURIComponent(location.href)">bookmarklet</a>
 
             [% IF q %]
-                <div><img src="/img?q=[% uri_escape(q) %]&amp;s=[% uri_escape(s) %]" /><br />[% q %]</div>
+                <div><img src="/img?q=[% q | uri %]&amp;s=[% s | uri %]" /><br />[% q %]</div>
             [% END %]
         </div>
         <hr />
